@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<title>Digital Dost</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+:root{
+  --orange:#ff8f1f;
+  --orange-dark:#ff6f00;
+  --bg:#f3f4f6;
+  --card:#ffffff;
+  --border:#e5e7eb;
+  --text:#111827;
+  --muted:#374151;
+}
+*{box-sizing:border-box;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+body{margin:0;background:var(--bg);color:var(--text);font-size:11px}
+
+/* HEADER */
+.app-header{
+  background:linear-gradient(135deg,var(--orange),var(--orange-dark));
+  color:#fff;padding:10px 12px 14px;
+  border-bottom-left-radius:18px;border-bottom-right-radius:18px;
+}
+.header-inner{
+  max-width:520px;margin:auto;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+}
+.logo{
+  width:34px;height:34px;border-radius:50%;
+  background:rgba(255,255,255,.25);
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+}
+.header-title{margin:0;font-size:15px;font-weight:800}
+.header-sub{font-size:9px;font-weight:600;margin-top:2px}
+
+/* LAYOUT */
+.container{padding:7px;max-width:520px;margin:auto;margin-top:8px}
+.card{
+  background:var(--card);border-radius:10px;
+  padding:9px;margin-bottom:7px;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+}
+
+/* FORM */
+select,input{
+  width:100%;padding:8px;font-size:11px;
+  border-radius:7px;border:1px solid var(--border);
+  margin-top:6px;
+}
+input[type=file]{font-size:10px}
+.section-title{font-size:10px;font-weight:600;margin-bottom:4px}
+.upload-label{font-size:9px;font-weight:600;margin-top:6px}
+.upload-label::before{content:"📂 "}
+
+/* PAYMENT NOTE */
+.payment-note{
+  background:#fffaf3;border:1px solid #fde6c8;
+  border-left:4px solid var(--orange);
+  border-radius:8px;padding:5px;
+  font-size:8px;opacity:0;transform:translateY(6px);
+  transition:.3s ease;
+}
+.payment-note.show{opacity:1;transform:translateY(0)}
+.payment-note b{font-weight:700}
+
+/* QR */
+.qr-box{
+  margin-top:6px;padding:6px;
+  background:#fff7ed;border-radius:8px;text-align:center;
+}
+.qr-box img{width:120px}
+
+/* BUTTON */
+.submit{
+  width:100%;padding:10px;font-size:12px;font-weight:700;
+  background:var(--orange);color:#fff;
+  border:none;border-radius:9px;
+}
+button:disabled{opacity:.6}
+</style>
+</head>
+
+<body>
+
+<header class="app-header">
+  <div class="header-inner">
+    <div class="logo">🧑‍💻</div>
+    <div style="text-align:center">
+      <h1 class="header-title">Digital Dost</h1>
+      <div class="header-sub">Simple • Secure • Fast</div>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- SERVICE -->
+<div class="card">
+<select id="service" onchange="updateService();checkForm()">
+  <option value="">Service चुनें</option>
+  <option value="PAN" data-price="149">पैन कार्ड ₹149</option>
+  <option value="LDL" data-price="799">Learners ड्राइविंग लाइसेंस ₹799</option>
+  <option value="PASSPORT" data-price="1699">Passport Online ₹1699</option>
+  <option value="PUC-B" data-price="89">PUC Bike ₹89</option>
+  <option value="PUC-F" data-price="119">PUC Four Wheeler ₹119</option>
+</select>
+</div>
+
+<!-- CUSTOMER + DOCS -->
+<div class="card" id="customerCard" style="display:none">
+  <div class="section-title">📝 ग्राहक विवरण एवं दस्तावेज़</div>
+  <input id="name" placeholder="नाम लिखें *" oninput="updateService();checkForm()">
+  <input id="mobile" placeholder="10 digit मोबाइल नंबर *" maxlength="10"
+    oninput="this.value=this.value.replace(/\D/g,'').slice(0,10);
+             updateService();checkForm()">
+  <div id="docs"></div>
+</div>
+
+<!-- PAYMENT -->
+<div class="card" id="paymentCard" style="display:none">
+  <div class="payment-note" id="payNote">
+    QR Scan करें, Payment सफल होने के बाद <b>12 Digit UTR</b> दर्ज करें
+  </div>
+
+  <div class="qr-box"><img id="qr"></div>
+
+  <input id="utr" placeholder="12 Digit UTR नंबर" maxlength="12"
+    oninput="this.value=this.value.replace(/\D/g,'').slice(0,12);checkForm()">
+</div>
+
+<!-- SUBMIT -->
+<div class="card">
+  <button id="submitBtn" class="submit" disabled>Submit</button>
+</div>
+
+</div>
+
+<script>
+/* FIXED DETAILS */
+const UPI_ID = "paytmqr10g00f@paytm";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzDlCzu0uevilWTo5LfW2TY-qm6RkTrbg2iRb7Fa0KuZEhdRxibjpm2CC_izeZwfCHq/exec";
+const WHATSAPP_NO = "919473721337";
+const docs = document.getElementById("docs");
+
+/* helpers */
+function addFile(name){
+  docs.innerHTML += `
+    <div class="upload-label">Upload ${name}</div>
+    <input type="file" onchange="checkForm()">
+  `;
+}
+
+/* update service */
+function updateService(){
+  const opt = service.options[service.selectedIndex];
+  const price = opt.dataset.price;
+  docs.innerHTML = "";
+
+  if(!price){
+    customerCard.style.display="none";
+    paymentCard.style.display="none";
+    payNote.classList.remove("show");
+    return;
+  }
+
+  customerCard.style.display="block";
+  paymentCard.style.display="block";
+
+  if(opt.value==="PAN") addFile("आधार कार्ड");
+  if(opt.value==="LDL"){ addFile("आधार कार्ड"); addFile("Signature"); }
+  if(opt.value==="PASSPORT"){ addFile("आधार कार्ड"); addFile("10वीं मार्कशीट"); }
+  if(opt.value==="PUC-B" || opt.value==="PUC-F") addFile("गाड़ी के पीछे का फोटो");
+
+  const note =
+    `${name.value||"Customer"} | ${mobile.value||"XXXXXXXXXX"} | ${opt.value} ₹${price}`;
+
+  qr.src =
+    "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" +
+    encodeURIComponent(`upi://pay?pa=${UPI_ID}&am=${price}&cu=INR&tn=${note}`);
+
+  setTimeout(()=>payNote.classList.add("show"),100);
+}
+
+/* validation */
+function checkForm(){
+  submitBtn.disabled = !(
+    service.value &&
+    name.value.trim() &&
+    mobile.value.length===10 &&
+    utr.value.length===12
+  );
+}
+
+/* SUBMIT (GET beacon – works on GitHub Pages) */
+submitBtn.addEventListener("click", function(){
+  if(submitBtn.disabled) return;
+
+  const opt = service.options[service.selectedIndex];
+  const params = new URLSearchParams({
+    name: name.value.trim(),
+    mobile: mobile.value.trim(),
+    service: opt.text,
+    price: "₹"+opt.dataset.price,
+    utr: utr.value.trim()
+  });
+
+  /* Google Sheet save */
+  const img = new Image();
+  img.src = SCRIPT_URL + "?" + params.toString();
+
+  /* WhatsApp */
+  const msg =
+`New Order - Digital Dost
+Name: ${name.value}
+Mobile: ${mobile.value}
+Service: ${opt.text}
+UTR: ${utr.value}`;
+
+  window.open(
+    "https://wa.me/"+WHATSAPP_NO+"?text="+encodeURIComponent(msg),
+    "_blank"
+  );
+
+  alert("Form submitted successfully!");
+});
+</script>
+
+</body>
+</html>
