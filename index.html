@@ -66,18 +66,29 @@ input[type=file]{font-size:10px}
 .payment-note.show{opacity:1;transform:translateY(0)}
 .payment-note b{font-weight:700}
 
-/* QR */
-.qr-box{
-  margin-top:6px;padding:6px;
-  background:#fff7ed;border-radius:8px;text-align:center;
+/* UPI BUTTON */
+.upi-btn{
+  width:100%;
+  margin-top:8px;
+  padding:10px;
+  font-size:12px;
+  font-weight:700;
+  background:#16a34a;
+  color:#fff;
+  border:none;
+  border-radius:9px;
 }
-.qr-box img{width:120px}
 
-/* BUTTON */
+/* SUBMIT */
 .submit{
-  width:100%;padding:10px;font-size:12px;font-weight:700;
-  background:var(--orange);color:#fff;
-  border:none;border-radius:9px;
+  width:100%;
+  padding:10px;
+  font-size:12px;
+  font-weight:700;
+  background:var(--orange);
+  color:#fff;
+  border:none;
+  border-radius:9px;
 }
 button:disabled{opacity:.6}
 </style>
@@ -112,20 +123,19 @@ button:disabled{opacity:.6}
 <!-- CUSTOMER + DOCS -->
 <div class="card" id="customerCard" style="display:none">
   <div class="section-title">📝 ग्राहक विवरण एवं दस्तावेज़</div>
-  <input id="name" placeholder="नाम लिखें *" oninput="updateService();checkForm()">
+  <input id="name" placeholder="नाम लिखें *" oninput="checkForm()">
   <input id="mobile" placeholder="10 digit मोबाइल नंबर *" maxlength="10"
-    oninput="this.value=this.value.replace(/\D/g,'').slice(0,10);
-             updateService();checkForm()">
+    oninput="this.value=this.value.replace(/\D/g,'').slice(0,10);checkForm()">
   <div id="docs"></div>
 </div>
 
 <!-- PAYMENT -->
 <div class="card" id="paymentCard" style="display:none">
   <div class="payment-note" id="payNote">
-    QR Scan करें, Payment सफल होने के बाद <b>12 Digit UTR</b> दर्ज करें
+    Pay with UPI Apps, payment के बाद <b>12 Digit UTR</b> दर्ज करें
   </div>
 
-  <div class="qr-box"><img id="qr"></div>
+  <button class="upi-btn" onclick="payUPI()">Pay with UPI Apps</button>
 
   <input id="utr" placeholder="12 Digit UTR नंबर" maxlength="12"
     oninput="this.value=this.value.replace(/\D/g,'').slice(0,12);checkForm()">
@@ -140,24 +150,22 @@ button:disabled{opacity:.6}
 
 <script>
 /* FIXED DETAILS */
-const UPI_ID = "paytmqr10g00f@paytm";
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzDlCzu0uevilWTo5LfW2TY-qm6RkTrbg2iRb7Fa0KuZEhdRxibjpm2CC_izeZwfCHq/exec";
-const WHATSAPP_NO = "919473721337";
-const docs = document.getElementById("docs");
+const UPI_ID="paytmqr10g00f@paytm";
+const SCRIPT_URL="https://script.google.com/macros/s/AKfycbzDlCzu0uevilWTo5LfW2TY-qm6RkTrbg2iRb7Fa0KuZEhdRxibjpm2CC_izeZwfCHq/exec";
+const WHATSAPP_NO="919473721337";
+const docs=document.getElementById("docs");
 
 /* helpers */
 function addFile(name){
-  docs.innerHTML += `
-    <div class="upload-label">Upload ${name}</div>
-    <input type="file" onchange="checkForm()">
-  `;
+  docs.innerHTML+=`<div class="upload-label">Upload ${name}</div>
+                   <input type="file">`;
 }
 
-/* update service */
+/* service change */
 function updateService(){
-  const opt = service.options[service.selectedIndex];
-  const price = opt.dataset.price;
-  docs.innerHTML = "";
+  const opt=service.options[service.selectedIndex];
+  const price=opt.dataset.price;
+  docs.innerHTML="";
 
   if(!price){
     customerCard.style.display="none";
@@ -170,23 +178,27 @@ function updateService(){
   paymentCard.style.display="block";
 
   if(opt.value==="PAN") addFile("आधार कार्ड");
-  if(opt.value==="LDL"){ addFile("आधार कार्ड"); addFile("Signature"); }
-  if(opt.value==="PASSPORT"){ addFile("आधार कार्ड"); addFile("10वीं मार्कशीट"); }
-  if(opt.value==="PUC-B" || opt.value==="PUC-F") addFile("गाड़ी के पीछे का फोटो");
-
-  const note =
-    `${name.value||"Customer"} | ${mobile.value||"XXXXXXXXXX"} | ${opt.value} ₹${price}`;
-
-  qr.src =
-    "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" +
-    encodeURIComponent(`upi://pay?pa=${UPI_ID}&am=${price}&cu=INR&tn=${note}`);
+  if(opt.value==="LDL"){addFile("आधार कार्ड");addFile("Signature");}
+  if(opt.value==="PASSPORT"){addFile("आधार कार्ड");addFile("10वीं मार्कशीट");}
+  if(opt.value==="PUC-B"||opt.value==="PUC-F") addFile("गाड़ी के पीछे का फोटो");
 
   setTimeout(()=>payNote.classList.add("show"),100);
 }
 
+/* UPI PAY */
+function payUPI(){
+  const opt=service.options[service.selectedIndex];
+  const price=opt.dataset.price;
+
+  const note=`${name.value||"Customer"} | ${mobile.value||"XXXXXXXXXX"} | ${opt.value} ₹${price}`;
+
+  const url=`upi://pay?pa=${UPI_ID}&pn=Digital%20Dost&am=${price}&cu=INR&tn=${encodeURIComponent(note)}`;
+  window.location.href=url;
+}
+
 /* validation */
 function checkForm(){
-  submitBtn.disabled = !(
+  submitBtn.disabled=!(
     service.value &&
     name.value.trim() &&
     mobile.value.length===10 &&
@@ -194,38 +206,35 @@ function checkForm(){
   );
 }
 
-/* SUBMIT (GET beacon – works on GitHub Pages) */
-submitBtn.addEventListener("click", function(){
+/* submit */
+submitBtn.onclick=function(){
   if(submitBtn.disabled) return;
 
-  const opt = service.options[service.selectedIndex];
-  const params = new URLSearchParams({
-    name: name.value.trim(),
-    mobile: mobile.value.trim(),
-    service: opt.text,
-    price: "₹"+opt.dataset.price,
-    utr: utr.value.trim()
+  const opt=service.options[service.selectedIndex];
+  const params=new URLSearchParams({
+    name:name.value.trim(),
+    mobile:mobile.value.trim(),
+    service:opt.text,
+    price:"₹"+opt.dataset.price,
+    utr:utr.value.trim()
   });
 
-  /* Google Sheet save */
-  const img = new Image();
-  img.src = SCRIPT_URL + "?" + params.toString();
+  /* Google Sheet */
+  const img=new Image();
+  img.src=SCRIPT_URL+"?"+params.toString();
 
   /* WhatsApp */
-  const msg =
+  const msg=
 `New Order - Digital Dost
 Name: ${name.value}
 Mobile: ${mobile.value}
 Service: ${opt.text}
 UTR: ${utr.value}`;
 
-  window.open(
-    "https://wa.me/"+WHATSAPP_NO+"?text="+encodeURIComponent(msg),
-    "_blank"
-  );
+  window.open("https://wa.me/"+WHATSAPP_NO+"?text="+encodeURIComponent(msg),"_blank");
 
   alert("Form submitted successfully!");
-});
+};
 </script>
 
 </body>
